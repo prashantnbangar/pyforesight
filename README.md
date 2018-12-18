@@ -11,5 +11,5 @@ Additional Features above the basic Auto-ARIMA implementation,
 5. Power transformation for handling multiplicative series
 
 Future scope:
-1. Implement corss-validation for model selection
+1. Implement cross-validation for model selection
 2. Consider change-points in the time series to improve the forecasting accuracy.
