@@ -10,6 +10,12 @@ Additional Features above the basic Auto-ARIMA implementation,
 4. Residual Analysis
 5. Power transformation for handling multiplicative series
 
+
+Usage:
+forecast <data_file_disk_path> <data_file_type> <date_column_name> <date_frequency> <seasonal_period>
+
+Currently only csv data file type is supported.
+
 Future scope:
 1. Implement cross-validation for model selection
 2. Consider change-points in the time series to improve the forecasting accuracy.

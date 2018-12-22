@@ -1,1 +1,4 @@
-statsmodel
+numpy
+pandas
+statsmodels
+seasonal
