@@ -2,13 +2,13 @@
   "min_p" : 0,
   "max_p" : 5,
   "min_q" : 0,
-  "max_q" : 5,
+  "max_q" : 3,
   "min_d" : 0,
   "max_d" : 2,
   "min_P" : 0,
   "max_P" : 5,
   "min_Q" : 0,
-  "max_Q" : 5,
+  "max_Q" : 3,
   "min_D" : 0,
-  "max_D" : 2
+  "max_D" : 1
 }

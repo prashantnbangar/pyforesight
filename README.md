@@ -12,7 +12,9 @@ Additional Features above the basic Auto-ARIMA implementation,
 
 
 Usage:
-forecast <data_file_disk_path> <data_file_type> <date_column_name> <date_frequency> <seasonal_period>
+
+forecast <data_file_disk_path> <data_file_type> <date_column_name> <time_series_column_name> <date_frequency> <seasonal_period> <forecast_steps>
+
 
 Currently only csv data file type is supported.
 

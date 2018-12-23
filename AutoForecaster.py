@@ -10,13 +10,15 @@ def main():
     DATASET_PATH = sys.argv[1]
     DATA_TYPE = sys.argv[2]
     DATE_COL = sys.argv[3]
-    FREQUENCY=sys.argv[4]
-    SEASONAL_PERIOD = sys.argv[5]
+    SERIES_NAME = sys.argv[4]
+    FREQUENCY=sys.argv[5]
+    SEASONAL_PERIOD = sys.argv[6]
+    FORECAST_STEPS = sys.argv[7]
 
     dataframe = DataLoader.load_data(DATASET_PATH, DATA_TYPE, date_col=DATE_COL, frequency=FREQUENCY)
 
     model = AutoARIMA()
-    model.fit(dataframe)
+    model.fit(dataframe[SERIES_NAME], seasonal_period=None)
 
 
 if __name__ == "__main__":
