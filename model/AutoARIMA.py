@@ -4,6 +4,7 @@ from statsmodels.tsa.arima_model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tools.eval_measures import mse
 import random
+from sklearn.model_selection import ParameterGrid
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -11,12 +12,14 @@ script_dir = os.path.dirname(__file__)
 with open(os.path.join(script_dir, 'parameters.json')) as f:
     parameters = json.load(f)
 
+
 class AutoARIMA():
 
     def __init__(self):
         super().__init__()
         print(parameters)
         self.__seasonal = False
+        self.__seasonal_period = None
         self.__best_model = None
         self.__best_model_fit = None
 
@@ -28,13 +31,24 @@ class AutoARIMA():
         :param seasonal_period: The seasonal period of the time series
         :return: fitted model
         """
-        if seasonal_period == None:
+        if seasonal_period is None:
             self.__seasonal = False
         else:
             self.__seasonal = True
-        self.__best_model, best_model_fit = self.__evaluate_models(ts, test_ratio=test_ratio)
-        self.__best_model_fit = self.__best_model.fit(ts)
-        return best_model_fit
+            self.__seasonal_period = seasonal_period
+        self.__best_model, self.__best_model_fit = self.__evaluate_models(ts, test_ratio=test_ratio)
+        return self.__best_model_fit
+
+    def predict(self, steps):
+        """
+        Returns the forecasted values using the trained model
+        :param steps: number of steps to forecast
+        :return: array of forecasted values
+        """
+        if not self.__seasonal:
+            return self.__best_model_fit.forecast(steps)[0]
+        else:
+            return self.__best_model_fit.forecast(steps)
 
     def __evaluate_models(self, ts, test_ratio, max_iterations=20):
         """
@@ -53,12 +67,14 @@ class AutoARIMA():
             try:
                 score, model, model_fit = self.__evaluate_arima_model(ts, order_i, seasonal_order_i, test_ratio)
                 if score < best_score:
-                    best_score, best_order, best_seasonal_order, model, model_fit = \
+                    best_score, best_order, best_seasonal_order, best_model, best_model_fit = \
                         score, order_i, seasonal_order_i, model, model_fit
                 print('ARIMA%s %s MSE=%.3f' % (order_i, seasonal_order_i, score))
             except Exception as e:
                 print(e)
         print('Best ARIMA%s %s MSE=%.3f' % (best_order, best_seasonal_order, best_score))
+        print("Retraining model on entire dataset")
+        best_model, best_model_fit = self.__train_model(ts, best_order, best_seasonal_order)
         return best_model, best_model_fit
 
     def __evaluate_arima_model(self, ts, order, seasonal_order, test_ratio):
@@ -66,61 +82,68 @@ class AutoARIMA():
         Evaluates the ARIMA model with given order and seasonal order
         :param ts: time series
         :param order: (p,d,q)
-        :param seasonal_order: (P,D,Q)
+        :param seasonal_order: (P,D,Q,m)
         :param test_ratio: test ratio to use
         :return: error, best_model, best_model_fit
         """
         # prepare training dataset
         train_size = int(len(ts) * (1-test_ratio))
         train, test = ts[0:train_size], ts[train_size:]
-        history = [x for x in train]
-        # make predictions
-        predictions = list()
-        error=0
-        model=None
-        model_fit=None
+
+        model, model_fit = self.__train_model(train, order, seasonal_order)
         if not self.__seasonal:
-            for t in range(len(test)):
-                model = ARIMA(history, order=order)
-                model_fit = model.fit(disp=0, maxiter=50)
-                yhat = model_fit.forecast()[0]
-                predictions.append(yhat)
-                history.append(test[t])
-                # calculate out of sample error
-                error = mse(test, predictions)
+            yhat = model_fit.forecast(len(test))[0]
         else:
-            for t in range(len(test)):
-                model = SARIMAX(history, order=order, seasonal_order=seasonal_order,
-                                enforce_stationarity=False, enforce_invertibility=False)
-                model_fit = model.fit()
-                yhat = model_fit.forecast()
-                predictions.append(yhat)
-                history.append(test[t])
-                # calculate out of sample error
-                error = mse(test, predictions)
+            yhat = model_fit.forecast(len(test))
+
+        # calculate out of sample error
+        error = mse(test, yhat)
         return error, model, model_fit
 
-    def __generate_parameter_grid(self, max_parameter_combinations=50):
+    def __train_model(self, series, order, seasonal_order, max_iter=20):
+        """
+        Trains the ARIMA model and returns the model fit
+        :param series: series to train model on
+        :param order: (p,d,q)
+        :param seasonal_order: (P,D,Q,m)
+        :param max_iter: maximum iterations
+        :return:
+        """
+        if not self.__seasonal:
+            model = ARIMA(series, order=order)
+            model_fit = model.fit(disp=0, maxiter=max_iter)
+        else:
+            model = SARIMAX(series, order=order, seasonal_order=seasonal_order,
+                            enforce_stationarity=False, enforce_invertibility=False)
+            model_fit = model.fit(disp=0, maxiter=max_iter)
+        return model, model_fit
+
+    def __generate_parameter_grid(self):
         """
         Generates the Parameter grid for the ARIMA models
-        :param max_parameter_combinations: max parameter combinations to return
         :return:
         """
         order = []
         seasonal_order = None
-        seasonal_order=None
-        for i in range(max_parameter_combinations):
-            p = random.randint(parameters["min_p"], parameters["max_p"])
-            q = random.randint(parameters["min_q"], parameters["max_q"])
-            d = random.randint(parameters["min_d"], parameters["max_d"])
-            order.append((p,d,q))
+        grid = ParameterGrid({
+            "p": range(parameters["min_p"], parameters["max_p"], 1),
+            "q": range(parameters["min_q"], parameters["max_q"], 1),
+            "d": range(parameters["min_d"], parameters["max_d"], 1)
+        })
+        for counter in range(len(grid)):
+            param = grid[counter]
+            order.append((param["p"], param["d"], param["q"]))
 
         if self.__seasonal:
             seasonal_order = []
-            for i in range(max_parameter_combinations):
-                P = random.randint(parameters["min_P"], parameters["max_P"])
-                Q = random.randint(parameters["min_Q"], parameters["max_Q"])
-                D = random.randint(parameters["min_D"], parameters["max_D"])
-                seasonal_order.append((P, D, Q))
+            seasonal_grid = ParameterGrid({
+                "P": range(parameters["min_P"], parameters["max_P"], 1),
+                "Q": range(parameters["min_Q"], parameters["max_Q"], 1),
+                "D": range(parameters["min_D"], parameters["max_D"], 1)
+            })
+            for counter in range(len(seasonal_grid)):
+                param = seasonal_grid[counter]
+                seasonal_order.append((param["P"], param["D"], param["Q"], self.__seasonal_period))
 
         return order, seasonal_order
+
