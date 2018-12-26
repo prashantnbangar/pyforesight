@@ -13,7 +13,7 @@ with open(os.path.join(script_dir, 'parameters.json')) as f:
     parameters = json.load(f)
 
 
-class AutoARIMA():
+class RandomSearchARIMA():
 
     def __init__(self):
         super().__init__()
@@ -39,16 +39,16 @@ class AutoARIMA():
         self.__best_model, self.__best_model_fit = self.__evaluate_models(ts, test_ratio=test_ratio)
         return self.__best_model_fit
 
-    def predict(self, steps):
+    def predict(self, steps, exogenous=None):
         """
         Returns the forecasted values using the trained model
         :param steps: number of steps to forecast
         :return: array of forecasted values
         """
         if not self.__seasonal:
-            return self.__best_model_fit.forecast(steps)[0]
+            return self.__best_model_fit.forecast(steps, exog=exogenous)[0]
         else:
-            return self.__best_model_fit.forecast(steps)
+            return self.__best_model_fit.forecast(steps, exog=exogenous)
 
     def __evaluate_models(self, ts, test_ratio, max_iterations=20):
         """

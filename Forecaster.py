@@ -1,6 +1,6 @@
 import data.DataLoader as DataLoader
 import sys
-from model.AutoARIMA import AutoARIMA
+from model.AutoForecastModel import AutoARIMA
 
 
 def main():
