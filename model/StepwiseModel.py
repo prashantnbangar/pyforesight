@@ -5,6 +5,7 @@ from numpy.linalg import LinAlgError
 from statsmodels.tsa.arima_model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tools.eval_measures import rmse
+import util.Plotter as Plotter
 
 from util import Statistician
 import numpy as np
@@ -50,8 +51,8 @@ class StepwiseModel():
 
         self.__best_model_fit, self.__best_model = self.__train_stepwise(train, exogenous=exogenous_train)
 
-        test_forecasts = self.predict(steps=len(test), exogenous=exogenous_test)["y_hat"]
-        rmse_score = rmse(test, test_forecasts)
+        test_forecasts = self.predict(steps=len(test), exogenous=exogenous_test)
+        rmse_score = rmse(test, test_forecasts["yhat"])
         model_order = self.__best_model_fit.specification["order"]
         seasonal_order = self.__best_model_fit.specification["seasonal_order"] if self.__seasonal else None
         drift = "" if self.__best_model_fit.specification["trend"] == "n" else "with drift"
@@ -60,6 +61,8 @@ class StepwiseModel():
         print("Retraining model on entire dataset")
         self.__best_model, self.__best_model_fit, score = self.__train_model(ts, model_order, seasonal_order)
 
+        test_forecasts["y"] = test
+        Plotter.plot_forecast(self.__best_model_fit, train, test_forecasts)
         return self.__best_model, self.__best_model_fit, rmse_score
 
 
@@ -71,15 +74,15 @@ class StepwiseModel():
         :return: forecasted dataframe containing predicitons, confidence interval and index
         """
         start = self.__best_model_fit.nobs
-        end = start + steps -1
+        end = start + steps - 1
 
         predictions = self.__best_model_fit.get_prediction(start=start, end=end, exog=exogenous)
         confidence = predictions.conf_int()
         forecast = pd.DataFrame({
             "dates" : confidence.index,
-            "y_hat" : predictions.predicted_mean,
-            "y_lower" : confidence.iloc[:, 0],
-            "y_upper" : confidence.iloc[:, 1]
+            "yhat" : predictions.predicted_mean,
+            "yhat_lower" : confidence.iloc[:, 0],
+            "yhat_upper" : confidence.iloc[:, 1]
         })
         return forecast
 
@@ -105,10 +108,10 @@ class StepwiseModel():
                 if self.__seen[p_t, q_t, P_t, Q_t] == 1:
                     continue
                 count+=1
-                model_t, fit_t, score_t = self.__train_model(ts, order=(p, d, q),
-                                                             seasonal_order=(P, D, Q, self.__seasonal_period),
+                model_t, fit_t, score_t = self.__train_model(ts, order=(p_t, d, q_t),
+                                                             seasonal_order=(P_t, D, Q_t, self.__seasonal_period),
                                                              exogenous=exogenous)
-                if score_t < best_score:
+                if score_t is not None and score_t < best_score:
                     best_model = model_t
                     best_fit = fit_t
                     best_score = score_t
@@ -203,23 +206,23 @@ class StepwiseModel():
         """Creates the ARIMA p, d, P, D parameter search space using the passed initial values identified earlier
         """
         p_up = min(parameters["max_p"], p+1)
-        p_down = min(parameters["min_p"], p - 1)
+        p_down = max(parameters["min_p"], p - 1)
         q_up = min(parameters["max_q"], q + 1)
-        q_down = min(parameters["max_q"], q - 1)
+        q_down = max(parameters["min_q"], q - 1)
 
         parameters_space = [(p_up, q, P, Q), (p_up, q_up, P, Q), (p, q_up, P, Q),
                                    (p_down, q, P, Q), (p_down, q_down, P, Q), (p, q_down, P, Q),
                                    (p_up, q_down, P, Q), (p_down, q_up, P, Q)]
         if(self.__seasonal):
             P_up = min(parameters["max_P"], P + 1)
-            P_down = min(parameters["min_P"], P - 1)
+            P_down = max(parameters["min_P"], P - 1)
             Q_up = min(parameters["max_Q"], Q + 1)
-            Q_down = min(parameters["max_Q"], Q - 1)
+            Q_down = max(parameters["min_Q"], Q - 1)
             seasonal_parameter_space = [(p, q, P_up, Q), (p, q, P, Q_up), (p, q, P_up, Q_up),
                                         (p, q, P_down, Q), (p, q, P, Q_down), (p, q, P_down, Q_down),
                                         (p, q, P_up, Q_down), (p, q, P_down, Q_up)]
 
-            parameters_space = parameters_space+seasonal_parameter_space
+            parameters_space += seasonal_parameter_space
 
         # TODO : Revisit
         if allow_drift == 1:

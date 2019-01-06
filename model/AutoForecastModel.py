@@ -1,6 +1,6 @@
 import warnings
 
-from model.RandomSearchModel import RandomSearchARIMA
+from model.IterativeModel import RandomSearchARIMA
 from model.StepwiseModel import StepwiseModel
 
 warnings.filterwarnings("ignore")
