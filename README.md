@@ -5,7 +5,7 @@ Automatically chooses the best model for forecasting based on the model score.
 
 Additional Features above the basic Auto-ARIMA implementation,
 1. Automatically inferring time series frequency and seasonal period if not provided in input
-2. Handling ling seasonalities
+2. Handling long seasonalities
 3. Accepting Holiday feature to be used while model building
 4. Power transformation for handling multiplicative series
 
