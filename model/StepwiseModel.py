@@ -37,7 +37,7 @@ class StepwiseModel():
         :param test_ratio: test ratio to use
         :return: model, model_fit, score
         """
-        self.__seasonal = True if seasonal_period != -1 else False
+        self.__seasonal = True if seasonal_period > 0 else False
         self.__seasonal_period = seasonal_period
 
         # prepare training dataset

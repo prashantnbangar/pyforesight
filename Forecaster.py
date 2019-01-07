@@ -12,13 +12,12 @@ def main():
     DATE_COL = sys.argv[3]
     SERIES_NAME = sys.argv[4]
     FREQUENCY=sys.argv[5]
-    SEASONAL_PERIOD = int(sys.argv[6])
-    FORECAST_STEPS = int(sys.argv[7])
+    FORECAST_STEPS = int(sys.argv[6])
 
     dataframe = DataLoader.load_data(DATASET_PATH, DATA_TYPE, date_col=DATE_COL, frequency=FREQUENCY)
 
     model = AutoARIMA()
-    model.fit(dataframe[SERIES_NAME], seasonal_period=SEASONAL_PERIOD)
+    model.fit(dataframe[SERIES_NAME])
     print(model.predict(FORECAST_STEPS))
 
 
