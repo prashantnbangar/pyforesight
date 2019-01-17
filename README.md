@@ -12,9 +12,11 @@ Additional Features above the basic Auto-ARIMA implementation,
 
 Usage:
 
-forecast <data_file_disk_path> <data_file_type> <date_column_name> <time_series_column_name> <date_frequency> <forecast_steps>
+forecast <data_file_path_on_disk> <date_column_name> <time_series_column_name> <forecast_steps> ["FREQUENCY=<date_frequency>,SEASONAL_PERIOD=<seasonal_period>"]
 
-Sample Output after model training
+FREQUENCY and SEASONAL_PERIOD are optional parameters.
+
+Output after model training on the Air Passengers dataset
 ![Airlines Dataset example](docs/AirlinesForecast.png?raw=true "Airlines Data Forecasting")
 
 Currently only csv data file type is supported.

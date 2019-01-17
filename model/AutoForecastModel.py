@@ -3,7 +3,7 @@ import warnings
 from model.IterativeModel import RandomSearchARIMA
 from model.StepwiseModel import StepwiseModel
 from model.SeasonalEstimator import SeasonalEstimator
-import pandas as pd
+
 
 warnings.filterwarnings("ignore")
 
@@ -51,6 +51,7 @@ class AutoARIMA():
         """
         if self.__seasonal_as_exogenous:
             seasonal_series = self.__seasonal_estimator.predict_seasonal_series(steps=steps)
-        else:seasonal_series = None
+        else:
+            seasonal_series = None
         return self.__model.predict(steps, exogenous=seasonal_series)
 

@@ -6,6 +6,7 @@ from statsmodels.tsa.arima_model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tools.eval_measures import rmse
 import util.Plotter as Plotter
+from model.PowerTransformer import PowerTransformer
 
 from util import Statistician
 import numpy as np
@@ -27,6 +28,7 @@ class StepwiseModel():
         self.__best_model = None
         self.__best_model_fit = None
         self.__drift = None
+        self.__power_transformer = PowerTransformer()
 
     def fit(self, ts, seasonal_period, exogenous=None, test_ratio=0.2):
         """
@@ -52,6 +54,7 @@ class StepwiseModel():
         self.__best_model_fit, self.__best_model = self.__train_stepwise(train, exogenous=exogenous_train)
 
         test_forecasts = self.predict(steps=len(test), exogenous=exogenous_test)
+
         rmse_score = rmse(test, test_forecasts["yhat"])
         model_order = self.__best_model_fit.specification["order"]
         seasonal_order = self.__best_model_fit.specification["seasonal_order"] if self.__seasonal else None
@@ -62,9 +65,8 @@ class StepwiseModel():
         self.__best_model, self.__best_model_fit, score = self.__train_model(ts, model_order, seasonal_order)
 
         test_forecasts["y"] = test
-        Plotter.plot_forecast(self.__best_model_fit, train, test_forecasts)
+        Plotter.plot_forecast(self.__best_model_fit, train, test_forecasts, ylabel="#Passengers")
         return self.__best_model, self.__best_model_fit, rmse_score
-
 
     def predict(self, steps, exogenous=None):
         """
@@ -79,10 +81,10 @@ class StepwiseModel():
         predictions = self.__best_model_fit.get_prediction(start=start, end=end, exog=exogenous)
         confidence = predictions.conf_int()
         forecast = pd.DataFrame({
-            "dates" : confidence.index,
-            "yhat" : predictions.predicted_mean,
-            "yhat_lower" : confidence.iloc[:, 0],
-            "yhat_upper" : confidence.iloc[:, 1]
+            "dates": confidence.index,
+            "yhat" : self.__power_transformer.inverse_transform(series=predictions.predicted_mean),
+            "yhat_lower": self.__power_transformer.inverse_transform(series=confidence.iloc[:, 0]),
+            "yhat_upper": self.__power_transformer.inverse_transform(series=confidence.iloc[:, 1])
         })
         return forecast
 
@@ -93,6 +95,7 @@ class StepwiseModel():
         :param exogenous: exogenous variables if any
         :return: fit, model
         """
+        ts, _, _ = self.__power_transformer.transform(ts)
         # Get the initial best model
         fit, model, score = self.__initialize_parameters(ts, exogenous=exogenous)
 
@@ -192,7 +195,7 @@ class StepwiseModel():
                 method="lbfgs"
                 trend = "n" if self.__drift == 0 else "c"
                 model = SARIMAX(series, exog=exogenous, order=order, seasonal_order=seasonal_order, trend=trend,
-                                enforce_stationarity=True)
+                                enforce_stationarity=False)
             fit = model.fit(method=method, solver="lbfgs", maxiter=max_iterations, disp=0)
             score = fit.aic
             print("Order : " + str(order), ", Seasonal Order : " + str(seasonal_order) + ", AIC Score : " + str(score))

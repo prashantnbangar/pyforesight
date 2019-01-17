@@ -25,7 +25,7 @@ class SeasonalEstimator():
             seasonal_series = pd.Series(seasonal_series, index=data.index)
             self.__diff = nobs % self.__seasonality
 
-        return self.__seasonality, pd.DataFrame({"seasonal":seasonal_series})
+        return self.__seasonality, pd.DataFrame({"seasonal": seasonal_series})
 
     def predict_seasonal_series(self, steps):
         """
