@@ -1,4 +1,4 @@
-# auto-forecast
+# pyforesight
 Enhanced Automatic time series forecasting using ARIMA family of models. 
 Implements the basic Auto-ARIMA with additional functionalities in python creating a robust algorithm to handle any type of series for forecasting. 
 Automatically chooses the best model for forecasting based on the model score.
