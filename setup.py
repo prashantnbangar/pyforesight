@@ -15,10 +15,10 @@ with open(path.join(here, 'README.md'), mode='utf-8') as f:
 # Fields marked as "Optional" may be commented out.
 
 setup(
-    name='pyautoarima',
+    name='pyforesight',
     version='1.0.0',
     description='Enhanced auto ARIMA based time series forecasting',
-    url='https://github.com/prashantnbangar/pyautoarima',
+    url='https://github.com/prashantnbangar/pyforesight',
     author='Prashant Bangar',
     author_email='prashantbangar@live.com',
     classifiers=[
@@ -50,6 +50,6 @@ setup(
     # This field corresponds to the "Project-URL" metadata fields:
     # https://packaging.python.org/specifications/core-metadata/#project-url-multiple-use
     project_urls={
-        'Source': 'https://github.com/prashantnbangar/pyautoarima',
+        'Source': 'https://github.com/prashantnbangar/pyforesight',
     },
 )
