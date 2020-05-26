@@ -16,6 +16,12 @@ class AutoARIMA():
         self.__seasonal_estimator = SeasonalEstimator()
         self.__seasonal_as_exogenous = False
 
+
+    def fit_predict(self, ts, seasonal_period, steps, test_ratio=0.2, exogenous=None):
+        self.fit(ts, seasonal_period=seasonal_period, test_ratio=test_ratio)
+        predictions = self.predict(steps)
+        return predictions
+
     def fit(self, ts, seasonal_period=None, stepwise=True, test_ratio=0.20):
         """
         Fits the model on the passed time series

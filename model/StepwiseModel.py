@@ -2,7 +2,6 @@ import os
 import json
 
 from numpy.linalg import LinAlgError
-from statsmodels.tsa.arima_model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tools.eval_measures import rmse
 import util.Plotter as Plotter
@@ -43,30 +42,42 @@ class StepwiseModel():
         self.__seasonal_period = seasonal_period
 
         # prepare training dataset
-        train_size = int(len(ts) * (1 - test_ratio))
-        train, test = ts[:train_size], ts[train_size:]
-
-        if exogenous is not None:
-            exogenous_train, exogenous_test = exogenous[:train_size], exogenous[train_size:]
+        if test_ratio>0:
+            train_size = int(len(ts) * (1 - test_ratio))
+            train, test = ts[:train_size], ts[train_size:]
+            if exogenous is not None:
+                exogenous_train, exogenous_test = exogenous[:train_size], exogenous[train_size:]
+            else:
+                exogenous_train, exogenous_test = None, None
         else:
-            exogenous_train, exogenous_test = None, None
+            train_size = len(ts)
+            train, test = ts, None
+            if exogenous is not None:
+                exogenous_train, exogenous_test = exogenous, None
+            else:
+                exogenous_train, exogenous_test = None, None
+
 
         self.__best_model_fit, self.__best_model = self.__train_stepwise(train, exogenous=exogenous_train)
 
-        test_forecasts = self.predict(steps=len(test), exogenous=exogenous_test)
 
-        rmse_score = rmse(test, test_forecasts["yhat"])
         model_order = self.__best_model_fit.specification["order"]
         seasonal_order = self.__best_model_fit.specification["seasonal_order"] if self.__seasonal else None
         drift = "" if self.__best_model_fit.specification["trend"] == "n" else "with drift"
-        print('Best ARIMA%s %s %s MSE=%.3f' % (model_order, seasonal_order, drift, rmse_score))
 
-        print("Retraining model on entire dataset")
-        self.__best_model, self.__best_model_fit, score = self.__train_model(ts, model_order, seasonal_order)
+        if test_ratio > 0:
+            test_forecasts = self.predict(steps=len(test), exogenous=exogenous_test)
+            rmse_score = rmse(test, test_forecasts["yhat"])
+            print('Best ARIMA%s %s %s MSE=%.3f' % (model_order, seasonal_order, drift, rmse_score))
+            print("Retraining model on entire dataset")
+            self.__best_model, self.__best_model_fit, score = self.__train_model(ts, model_order, seasonal_order)
+            test_forecasts["y"] = test
+            Plotter.plot_validation_forecast(self.__best_model_fit, train, test_forecasts, ylabel="Values")
+            return self.__best_model, self.__best_model_fit, rmse_score
+        else:
+            print('Best ARIMA%s %s %s' % (model_order, seasonal_order, drift))
+            return self.__best_model, self.__best_model_fit, None
 
-        test_forecasts["y"] = test
-        Plotter.plot_forecast(self.__best_model_fit, train, test_forecasts, ylabel="#Passengers")
-        return self.__best_model, self.__best_model_fit, rmse_score
 
     def predict(self, steps, exogenous=None):
         """
@@ -77,6 +88,9 @@ class StepwiseModel():
         """
         start = self.__best_model_fit.nobs
         end = start + steps - 1
+
+        print(start)
+        print()
 
         predictions = self.__best_model_fit.get_prediction(start=start, end=end, exog=exogenous)
         confidence = predictions.conf_int()
@@ -97,7 +111,7 @@ class StepwiseModel():
         """
         ts, _, _ = self.__power_transformer.transform(ts)
         # Get the initial best model
-        fit, model, score = self.__initialize_parameters(ts, exogenous=exogenous)
+        model, fit, score = self.__initialize_parameters(ts, exogenous=exogenous)
 
         best_score = score
         best_model = model
@@ -175,7 +189,7 @@ class StepwiseModel():
                 fit = fit_x
                 score = score_x
 
-        return fit, model, score
+        return model, fit, score
 
     def __train_model(self, series, order, seasonal_order, exogenous=None, max_iterations=50):
         """
@@ -187,16 +201,15 @@ class StepwiseModel():
         :return: model, fit, score
         """
         model, fit, score = None, None, None
+        trend = "n" if self.__drift == 0 else "c"
         try:
             if not self.__seasonal:
-                method="css-mle"
-                model = ARIMA(series, exog=exogenous, order=order)
+                model = SARIMAX(series, exog=exogenous, order=order, trend=trend,
+                                enforce_stationarity=False, enforce_invertibility=False)
             else:
-                method="lbfgs"
-                trend = "n" if self.__drift == 0 else "c"
                 model = SARIMAX(series, exog=exogenous, order=order, seasonal_order=seasonal_order, trend=trend,
-                                enforce_stationarity=False)
-            fit = model.fit(method=method, solver="lbfgs", maxiter=max_iterations, disp=0)
+                                enforce_stationarity=False, enforce_invertibility=False)
+            fit = model.fit(maxiter=max_iterations, disp=0)
             score = fit.aic
             print("Order : " + str(order), ", Seasonal Order : " + str(seasonal_order) + ", AIC Score : " + str(score))
         except (ValueError, LinAlgError) as error:
